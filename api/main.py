@@ -36,7 +36,7 @@ def run_pipeline_task(pipeline_id: str, nl_description: str):
     """Run pipeline in background using Postgres Checkpointer."""
     try:
         with PostgresSaver.from_conn_string(DB_URI) as checkpointer:
-            graph = builder.compile(checkpointer=checkpointer)
+            graph = builder.compile(checkpointer=checkpointer, interrupt_before=["executor_agent"])
             
             config = {"configurable": {"thread_id": pipeline_id}}
             
@@ -46,6 +46,20 @@ def run_pipeline_task(pipeline_id: str, nl_description: str):
             )
     except Exception as e:
         print(f"Error running pipeline {pipeline_id}: {e}")
+
+@app.post("/pipeline/{pipeline_id}/approve")
+async def approve_pipeline(pipeline_id: str, background_tasks: BackgroundTasks):
+    def resume_task(pid: str):
+        try:
+            with PostgresSaver.from_conn_string(DB_URI) as checkpointer:
+                graph = builder.compile(checkpointer=checkpointer, interrupt_before=["executor_agent"])
+                config = {"configurable": {"thread_id": pid}}
+                graph.invoke(None, config)
+        except Exception as e:
+            print(f"Error resuming pipeline {pid}: {e}")
+            
+    background_tasks.add_task(resume_task, pipeline_id)
+    return {"message": "Pipeline approved and execution resumed", "pipeline_id": pipeline_id}
 
 @app.post("/pipeline")
 async def create_pipeline(request: PipelineRequest, background_tasks: BackgroundTasks):
