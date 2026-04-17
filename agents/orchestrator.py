@@ -89,15 +89,19 @@ def executor_agent(state: PipelineState):
     
     logs.append("Executor: Triggering Extract Phase...")
     
+    EXTRACTOR_URL = os.getenv("EXTRACTOR_URL", "http://localhost:8001")
+    TRANSFORMER_URL = os.getenv("TRANSFORMER_URL", "http://localhost:8002")
+    LOADER_URL = os.getenv("LOADER_URL", "http://localhost:8003")
+    
     try:
         # Extract
-        resp = httpx.post("http://localhost:8001/extract", json={"source_path": config["source_path"]}, timeout=30.0)
+        resp = httpx.post(f"{EXTRACTOR_URL}/extract", json={"source_path": config["source_path"]}, timeout=30.0)
         resp.raise_for_status()
         current_data = resp.json().get("data", [])
         
         # Transform
         logs.append("Executor: Triggering Transform Phase...")
-        resp = httpx.post("http://localhost:8002/transform", json={
+        resp = httpx.post(f"{TRANSFORMER_URL}/transform", json={
             "data": current_data,
             "transformations": config.get("transformations", {})
         }, timeout=30.0)
@@ -106,7 +110,7 @@ def executor_agent(state: PipelineState):
         
         # Load
         logs.append("Executor: Triggering Load Phase...")
-        resp = httpx.post("http://localhost:8003/load", json={
+        resp = httpx.post(f"{LOADER_URL}/load", json={
             "data": current_data,
             "destination": config["destination_path"],
             "table_name": config["table_name"]
@@ -133,11 +137,15 @@ def monitor_agent(state: PipelineState):
     
     logs.append(f"Monitor: Analyzing failure. Current Retry Count: {retry_count}")
     
+    EXTRACTOR_URL = os.getenv("EXTRACTOR_URL", "http://localhost:8001")
+    TRANSFORMER_URL = os.getenv("TRANSFORMER_URL", "http://localhost:8002")
+    LOADER_URL = os.getenv("LOADER_URL", "http://localhost:8003")
+    
     # Poll health of services to see if it's transient
     services = [
-        ("Extractor", "http://localhost:8001/health"),
-        ("Transformer", "http://localhost:8002/health"),
-        ("Loader", "http://localhost:8003/health")
+        ("Extractor", f"{EXTRACTOR_URL}/health"),
+        ("Transformer", f"{TRANSFORMER_URL}/health"),
+        ("Loader", f"{LOADER_URL}/health")
     ]
     
     all_healthy = True

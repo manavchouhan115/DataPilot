@@ -1,7 +1,8 @@
 version: '3.8'
+
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -10,6 +11,72 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d langgraph_checkpoints"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  extractor:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.extractor
+    ports:
+      - "8001:8001"
+    volumes:
+      - ../data:/app/data
+
+  transformer:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.transformer
+    ports:
+      - "8002:8002"
+
+  loader:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.loader
+    ports:
+      - "8003:8003"
+    volumes:
+      - ../data:/app/data
+
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - EXTRACTOR_URL=http://extractor:8001
+      - TRANSFORMER_URL=http://transformer:8002
+      - LOADER_URL=http://loader:8003
+      - DATABASE_URL=postgresql://user:password@postgres:5432/langgraph_checkpoints
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      extractor:
+        condition: service_started
+      transformer:
+        condition: service_started
+      loader:
+        condition: service_started
+    volumes:
+      - ../data:/app/data
 
 volumes:
   postgres_data:

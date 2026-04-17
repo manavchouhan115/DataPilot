@@ -14,7 +14,7 @@ load_dotenv()
 app = FastAPI(title="DataPilot API Gateway")
 
 # Connection pool for LangGraph Postgres Checkpointer
-DB_URI = "postgresql://user:password@localhost:5432/langgraph_checkpoints"
+DB_URI = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/langgraph_checkpoints")
 
 # Initialize tables globally on startup
 @app.on_event("startup")
@@ -46,6 +46,10 @@ def run_pipeline_task(pipeline_id: str, nl_description: str):
             )
     except Exception as e:
         print(f"Error running pipeline {pipeline_id}: {e}")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 @app.post("/pipeline/{pipeline_id}/approve")
 async def approve_pipeline(pipeline_id: str, background_tasks: BackgroundTasks):

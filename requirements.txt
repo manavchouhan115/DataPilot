@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pandas
+httpx
+pydantic
+langchain
+langgraph
+langchain-groq
+groq
+psycopg-pool
+psycopg-binary
+langgraph-checkpoint-postgres
+python-dotenv
