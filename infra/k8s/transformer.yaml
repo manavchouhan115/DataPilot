@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datapilot-transformer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transformer
+  template:
+    metadata:
+      labels:
+        app: transformer
+    spec:
+      containers:
+      - name: transformer
+        image: $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/datapilot-transformer:latest
+        ports:
+        - containerPort: 8002
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transformer-svc
+spec:
+  selector:
+    app: transformer
+  ports:
+    - protocol: TCP
+      port: 8002
+      targetPort: 8002

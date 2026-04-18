@@ -99,6 +99,27 @@ async def get_pipeline_status(pipeline_id: str):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/pipeline/{pipeline_id}/retry")
+async def retry_pipeline(pipeline_id: str, background_tasks: BackgroundTasks):
+    def resume_task(pid: str):
+        try:
+            with PostgresSaver.from_conn_string(DB_URI) as checkpointer:
+                graph = builder.compile(checkpointer=checkpointer, interrupt_before=["executor_agent"])
+                config = {"configurable": {"thread_id": pid}}
+                # Reset retries by invoking with state update
+                graph.invoke({"retry_count": 0}, config)
+        except Exception as e:
+            print(f"Error resuming pipeline {pid}: {e}")
+            
+    background_tasks.add_task(resume_task, pipeline_id)
+    return {"message": "Pipeline retry initiated", "pipeline_id": pipeline_id}
+
+@app.get("/pipeline/{pipeline_id}/logs")
+async def stream_pipeline_logs(pipeline_id: str):
+    # This is a stub for Server-Sent Events (SSE)
+    # Real implementation would yield database queries asynchronously overriding sse_starlette
+    return {"logs": [f"Connection connected for {pipeline_id}...", "Waiting for LLM output..."]}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

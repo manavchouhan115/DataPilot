@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datapilot-loader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loader
+  template:
+    metadata:
+      labels:
+        app: loader
+    spec:
+      containers:
+      - name: loader
+        image: $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/datapilot-loader:latest
+        ports:
+        - containerPort: 8003
+        env:
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: rds-secret
+                key: url
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loader-svc
+spec:
+  selector:
+    app: loader
+  ports:
+    - protocol: TCP
+      port: 8003
+      targetPort: 8003

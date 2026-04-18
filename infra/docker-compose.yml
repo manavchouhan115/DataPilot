@@ -52,6 +52,17 @@ services:
     volumes:
       - ../data:/app/data
 
+  dashboard:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile.dashboard
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+    depends_on:
+      - api
+
   api:
     build:
       context: ..

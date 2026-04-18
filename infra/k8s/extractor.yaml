@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: extractor-sa
+  annotations:
+    # Will be patched post-terraform
+    eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/datapilot-extractor-role
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datapilot-extractor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: extractor
+  template:
+    metadata:
+      labels:
+        app: extractor
+    spec:
+      serviceAccountName: extractor-sa
+      containers:
+      - name: extractor
+        image: $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/datapilot-extractor:latest
+        ports:
+        - containerPort: 8001
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: extractor-svc
+spec:
+  selector:
+    app: extractor
+  ports:
+    - protocol: TCP
+      port: 8001
+      targetPort: 8001
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: extractor-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: datapilot-extractor
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50

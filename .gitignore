@@ -19,3 +19,13 @@ __pycache__/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Node
+node_modules/
+dist/
